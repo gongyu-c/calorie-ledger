@@ -174,7 +174,7 @@ function calc(){
   const lean=weight*(1-bf/100);
   const bmr=370+21.6*lean;                                   // Katch-McArdle
 
-  const stride=height*0.415;                                 // m
+  const stride=height*0.415/100;                            // m（cm→m）
   const km=steps*stride/1000;
   const walk=weight*km*0.8;                                  // 中速步行 0.8
 
