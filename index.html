@@ -210,7 +210,12 @@ function toast(msg,ok){
   const t=$('toast'); t.textContent=msg; t.className='toast show'+(ok?' ok':'');
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.className='toast',1800);
 }
-$('saveBtn').onclick=()=>{store(load().concat({date:todayStr(),...calc()})); render(); toast('已保存 '+todayStr(),true);};
+$('saveBtn').onclick=()=>{
+  const rows=load(), rec={date:todayStr(),...calc()};
+  const i=rows.findIndex(x=>x.date===rec.date);
+  if(i>=0)rows[i]=rec;else rows.push(rec);
+  store(rows); render(); toast('已保存 '+todayStr(),true);
+};
 $('clearBtn').onclick=()=>{if(confirm('确定清空全部历史记录？')){store([]);render();toast('已清空');}};
 
 function render(){
