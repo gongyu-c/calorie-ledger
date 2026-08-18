@@ -1,0 +1,232 @@
+<title>每日热量计算器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg:#F2F4F7; --card:#FFFFFF; --ink:#1B2430; --muted:#5C6875; --line:#E3E8EE;
+    --field:#F7F9FB; --accent:#E07B08; --on-accent:#FFFFFF; --accent-soft:#FDF3E3;
+    --good:#2F8F5B; --warn:#C0392B; --ghost:#E9EDF2; --ghost-ink:#1B2430;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#11151C; --card:#1A212B; --ink:#E7EBF1; --muted:#96A1AE; --line:#2A3340;
+      --field:#232C38; --accent:#F0A23C; --on-accent:#1B2430; --accent-soft:#2E2A1D;
+      --good:#57C285; --warn:#E46E5C; --ghost:#2A3340; --ghost-ink:#E7EBF1;
+      --shadow:0 1px 2px rgba(0,0,0,.25),0 2px 10px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11151C; --card:#1A212B; --ink:#E7EBF1; --muted:#96A1AE; --line:#2A3340;
+    --field:#232C38; --accent:#F0A23C; --on-accent:#1B2430; --accent-soft:#2E2A1D;
+    --good:#57C285; --warn:#E46E5C; --ghost:#2A3340; --ghost-ink:#E7EBF1;
+    --shadow:0 1px 2px rgba(0,0,0,.25),0 2px 10px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    max-width:640px; margin:0 auto; padding:16px 14px 96px;
+  }
+  .top{display:flex; align-items:baseline; justify-content:space-between; margin:2px 2px 14px;}
+  .brand{font-size:1.05rem; font-weight:700; letter-spacing:.02em;}
+  .brand span{color:var(--accent);}
+  .date{font-size:.8rem; color:var(--muted); font-variant-numeric:tabular-nums;}
+
+  /* 合计 banner */
+  .hero{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:18px 18px 14px; box-shadow:var(--shadow); margin-bottom:14px;
+  }
+  .hero .lbl{font-size:.78rem; color:var(--muted); letter-spacing:.06em; display:flex; align-items:center; gap:6px;}
+  .hero .num{
+    font-size:3rem; font-weight:800; color:var(--accent); line-height:1.1;
+    font-variant-numeric:tabular-nums; letter-spacing:-.01em; margin:2px 0 2px;
+  }
+  .hero .num small{font-size:1rem; font-weight:600; color:var(--muted); margin-left:6px; letter-spacing:0;}
+  .chips{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;}
+  .chip{
+    background:var(--accent-soft); border-radius:10px; padding:8px 6px; text-align:center;
+  }
+  .chip .cv{font-size:1rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .chip .ck{font-size:.66rem; color:var(--muted); margin-top:1px;}
+  .epoc{font-size:.76rem; color:var(--muted); margin-top:10px; border-top:1px dashed var(--line); padding-top:8px;}
+
+  /* 通用卡片 */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .card h2{font-size:.82rem; color:var(--muted); letter-spacing:.05em; margin-bottom:12px; font-weight:600; display:flex; align-items:center; gap:6px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 12px;}
+  label{display:block; font-size:.74rem; color:var(--muted); margin-bottom:4px;}
+  input,select{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:1rem; background:var(--field); color:var(--ink);
+    font-variant-numeric:tabular-nums; -webkit-appearance:none; appearance:none;
+  }
+  select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%; background-size:5px 5px; background-repeat:no-repeat; padding-right:34px;}
+  input:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent;}
+  .warn{font-size:.78rem; color:var(--warn); margin-top:10px; min-height:1em;}
+
+  .btn-row{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  button{border:none; border-radius:10px; padding:12px 16px; font-size:.95rem; font-weight:600; cursor:pointer;}
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .btn-primary{background:var(--accent); color:var(--on-accent);}
+  .btn-ghost{background:var(--ghost); color:var(--ghost-ink);}
+
+  /* 历史 */
+  .day{
+    display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--line); border-radius:12px; padding:11px 14px; margin-bottom:8px;
+    background:var(--card);
+  }
+  .day .d-l{font-size:.9rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .day .d-r{text-align:right;}
+  .day .d-t{font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--accent);}
+  .day .d-m{font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:2px;}
+  .empty{color:var(--muted); font-size:.82rem; text-align:center; padding:18px 0; border:1px dashed var(--line); border-radius:12px;}
+
+  /* toast */
+  .toast{
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:999px;
+    font-size:.86rem; opacity:0; pointer-events:none; transition:opacity .25s ease;
+    box-shadow:var(--shadow); white-space:nowrap; z-index:10;
+  }
+  .toast.show{opacity:1;}
+  .toast.ok{background:var(--good); color:#fff;}
+</style>
+
+<div class="top">
+  <div class="brand">🔥 每日热量<span>台账</span></div>
+  <div class="date" id="today"></div>
+</div>
+
+<!-- 结果置顶：先看数字 -->
+<div class="hero">
+  <div class="lbl">今日总消耗</div>
+  <div class="num"><span id="rTotal">—</span><small>kcal/天</small></div>
+  <div class="chips">
+    <div class="chip"><div class="cv" id="rBMR">–</div><div class="ck">BMR 基础</div></div>
+    <div class="chip"><div class="cv" id="rWalk">–</div><div class="ck">步行</div></div>
+    <div class="chip"><div class="cv" id="rAero">–</div><div class="ck">有氧</div></div>
+    <div class="chip"><div class="cv" id="rStr">–</div><div class="ck">力量</div></div>
+  </div>
+  <div class="epoc" id="epoc"></div>
+</div>
+
+<div class="card">
+  <h2>每日输入</h2>
+  <div class="grid2">
+    <div><label>体重 kg（默认 85）</label><input type="number" id="weight" value="85" min="30" max="200" step="0.1" inputmode="decimal"></div>
+    <div><label>体脂率 %（默认 25）</label><input type="number" id="bf" value="25" min="3" max="60" step="0.1" inputmode="decimal"></div>
+    <div><label>步行步数</label><input type="number" id="steps" value="8000" min="0" step="100" inputmode="numeric"></div>
+    <div><label>有氧时间（分钟）</label><input type="number" id="aeroMin" value="40" min="0" step="5" inputmode="numeric"></div>
+    <div><label>有氧平均心率 bpm</label><input type="number" id="aeroHR" value="150" min="80" max="200" inputmode="numeric"></div>
+    <div><label>力量训练时间（分钟）</label><input type="number" id="strMin" value="60" min="0" step="5" inputmode="numeric"></div>
+  </div>
+  <div style="margin-top:10px;"><label>力量强度</label>
+    <select id="strInt">
+      <option value="1">① 一般 · 组间充分休息（3.5 MET）</option>
+      <option value="2">② 高强度 · 少休息（6.0 MET）</option>
+      <option value="3">③ 循环 · 几乎不休息（8.0 MET）</option>
+    </select>
+  </div>
+  <div class="warn" id="warn"></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="saveBtn">保存今日</button>
+    <button class="btn-ghost" id="clearBtn">清空记录</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>个人固定参数</h2>
+  <div class="grid3">
+    <div><label>性别</label>
+      <select id="sex"><option value="m" selected>男</option><option value="f">女</option></select>
+    </div>
+    <div><label>年龄（岁）</label><input type="number" id="age" value="28" min="15" max="80" inputmode="numeric"></div>
+    <div><label>身高 cm</label><input type="number" id="height" value="180" min="120" max="220" inputmode="numeric"></div>
+  </div>
+  <div class="epoc">步幅按 身高×0.415 估算；有氧用 Keytel 心率公式；力量用 MET 法（不能用心率公式）。EPOC 后燃单独备注、不计入合计。</div>
+</div>
+
+<div class="card">
+  <h2>历史记录 <span style="font-weight:400;letter-spacing:0;">· 存于本机浏览器</span></h2>
+  <div id="list"></div>
+  <div class="empty" id="empty">暂无记录 —— 输入数据后点「保存今日」</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+
+function calc(){
+  const sex=$('sex').value, age=+$('age').value||28, height=+$('height').value||180;
+  const weight=+$('weight').value||85, bf=+$('bf').value||25;
+  const steps=+$('steps').value||0, aeroMin=+$('aeroMin').value||0, aeroHR=+$('aeroHR').value||150;
+  const strMin=+$('strMin').value||0, strInt=+$('strInt').value||1;
+
+  const lean=weight*(1-bf/100);
+  const bmr=370+21.6*lean;                                   // Katch-McArdle
+
+  const stride=height*0.415;                                 // m
+  const km=steps*stride/1000;
+  const walk=weight*km*0.8;                                  // 中速步行 0.8
+
+  const perMin=(sex==='m')
+    ?(-55.0969+0.6309*aeroHR+0.1988*weight+0.2017*age)/4.184
+    :(-20.4022+0.4472*aeroHR-0.1263*weight+0.074*age)/4.184; // Keytel
+  const aero=Math.max(0,perMin*aeroMin);
+
+  const MET=[3.5,6.0,8.0][strInt-1];
+  const str=MET*weight*strMin/60;
+
+  const total=bmr+walk+aero+str;
+
+  $('rTotal').textContent=Math.round(total);
+  $('rBMR').textContent=Math.round(bmr);
+  $('rWalk').textContent=Math.round(walk);
+  $('rAero').textContent=Math.round(aero);
+  $('rStr').textContent=Math.round(str);
+  $('epoc').textContent='EPOC 后燃参考 +'+Math.round(str*0.12)+' kcal · 不计入合计';
+
+  const warn=[];
+  if(aeroHR>160)warn.push('心率 160+ 超出公式验证区间（90–150），建议用全程平均值');
+  if(aeroHR<90)warn.push('心率过低，检查是否为有效有氧');
+  $('warn').textContent=warn.join('；');
+
+  return {weight,bf,steps,aeroMin,aeroHR,strMin,strInt,bmr,walk,aero,str,total};
+}
+
+function store(arr){try{localStorage.setItem('ledger',JSON.stringify(arr));}catch(e){}}
+function load(){try{return JSON.parse(localStorage.getItem('ledger')||'[]');}catch(e){return [];}}
+
+function toast(msg,ok){
+  const t=$('toast'); t.textContent=msg; t.className='toast show'+(ok?' ok':'');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.className='toast',1800);
+}
+$('saveBtn').onclick=()=>{store(load().concat({date:todayStr(),...calc()})); render(); toast('已保存 '+todayStr(),true);};
+$('clearBtn').onclick=()=>{if(confirm('确定清空全部历史记录？')){store([]);render();toast('已清空');}};
+
+function render(){
+  const rows=load().slice().reverse();
+  $('empty').style.display=rows.length?'none':'block';
+  $('list').innerHTML=rows.map(r=>`
+    <div class="day">
+      <div class="d-l">${r.date}</div>
+      <div class="d-r">
+        <div class="d-t">${Math.round(r.total)} kcal</div>
+        <div class="d-m">基础 ${Math.round(r.bmr)} · 走 ${Math.round(r.walk)} · 有氧 ${Math.round(r.aero)} · 力 ${Math.round(r.str)}</div>
+      </div>
+    </div>`).join('');
+}
+
+['weight','bf','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calc));
+$('today').textContent=todayStr();
+calc(); render();
+</script>
