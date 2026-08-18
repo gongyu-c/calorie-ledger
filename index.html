@@ -1,237 +1,425 @@
-<title>每日热量计算器</title>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日热量与体重管理</title>
 <style>
   :root{
     --bg:#F2F4F7; --card:#FFFFFF; --ink:#1B2430; --muted:#5C6875; --line:#E3E8EE;
-    --field:#F7F9FB; --accent:#E07B08; --on-accent:#FFFFFF; --accent-soft:#FDF3E3;
-    --good:#2F8F5B; --warn:#C0392B; --ghost:#E9EDF2; --ghost-ink:#1B2430;
+    --field:#F7F9FB; --accent:#CB7F18; --on-accent:#FFFFFF; --accent-soft:#FBF0DC;
+    --good:#2F8F5B; --good-soft:#E5F2EA; --warn:#C0392B; --warn-soft:#FBE9E7;
+    --ghost:#E9EDF2; --ghost-ink:#1B2430; --chart-grid:rgba(27,36,48,.08);
     --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.05);
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --bg:#11151C; --card:#1A212B; --ink:#E7EBF1; --muted:#96A1AE; --line:#2A3340;
-      --field:#232C38; --accent:#F0A23C; --on-accent:#1B2430; --accent-soft:#2E2A1D;
-      --good:#57C285; --warn:#E46E5C; --ghost:#2A3340; --ghost-ink:#E7EBF1;
+      --field:#232C38; --accent:#CB7F18; --on-accent:#FFFFFF; --accent-soft:#2A2416;
+      --good:#57C285; --good-soft:#16301F; --warn:#E46E5C; --warn-soft:#351E1A;
+      --ghost:#2A3340; --ghost-ink:#E7EBF1; --chart-grid:rgba(231,235,241,.10);
       --shadow:0 1px 2px rgba(0,0,0,.25),0 2px 10px rgba(0,0,0,.25);
     }
   }
   :root[data-theme="dark"]{
     --bg:#11151C; --card:#1A212B; --ink:#E7EBF1; --muted:#96A1AE; --line:#2A3340;
-    --field:#232C38; --accent:#F0A23C; --on-accent:#1B2430; --accent-soft:#2E2A1D;
-    --good:#57C285; --warn:#E46E5C; --ghost:#2A3340; --ghost-ink:#E7EBF1;
+    --field:#232C38; --accent:#CB7F18; --on-accent:#FFFFFF; --accent-soft:#2A2416;
+    --good:#57C285; --good-soft:#16301F; --warn:#E46E5C; --warn-soft:#351E1A;
+    --ghost:#2A3340; --ghost-ink:#E7EBF1; --chart-grid:rgba(231,235,241,.10);
     --shadow:0 1px 2px rgba(0,0,0,.25),0 2px 10px rgba(0,0,0,.25);
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-    background:var(--bg); color:var(--ink); line-height:1.5;
-    max-width:640px; margin:0 auto; padding:16px 14px 96px;
-  }
-  .top{display:flex; align-items:baseline; justify-content:space-between; margin:2px 2px 14px;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; max-width:640px; margin:0 auto; padding:14px 14px 60px;}
+  .top{display:flex; align-items:baseline; justify-content:space-between; margin:2px 2px 10px;}
   .brand{font-size:1.05rem; font-weight:700; letter-spacing:.02em;}
   .brand span{color:var(--accent);}
   .date{font-size:.8rem; color:var(--muted); font-variant-numeric:tabular-nums;}
 
-  /* 合计 banner */
-  .hero{
-    background:var(--card); border:1px solid var(--line); border-radius:16px;
-    padding:18px 18px 14px; box-shadow:var(--shadow); margin-bottom:14px;
-  }
-  .hero .lbl{font-size:.78rem; color:var(--muted); letter-spacing:.06em; display:flex; align-items:center; gap:6px;}
-  .hero .num{
-    font-size:3rem; font-weight:800; color:var(--accent); line-height:1.1;
-    font-variant-numeric:tabular-nums; letter-spacing:-.01em; margin:2px 0 2px;
-  }
-  .hero .num small{font-size:1rem; font-weight:600; color:var(--muted); margin-left:6px; letter-spacing:0;}
-  .chips{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;}
-  .chip{
-    background:var(--accent-soft); border-radius:10px; padding:8px 6px; text-align:center;
-  }
-  .chip .cv{font-size:1rem; font-weight:700; font-variant-numeric:tabular-nums;}
-  .chip .ck{font-size:.66rem; color:var(--muted); margin-top:1px;}
-  .epoc{font-size:.76rem; color:var(--muted); margin-top:10px; border-top:1px dashed var(--line); padding-top:8px;}
+  /* 标签栏 */
+  .tabs{display:flex; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px; margin-bottom:14px; box-shadow:var(--shadow);}
+  .tab{flex:1; border:none; background:transparent; color:var(--muted); font-size:.92rem; font-weight:600; padding:10px 0; border-radius:9px; cursor:pointer;}
+  .tab.active{background:var(--accent-soft); color:var(--accent);}
 
-  /* 通用卡片 */
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:14px 16px; margin-bottom:14px; box-shadow:var(--shadow);
-  }
-  .card h2{font-size:.82rem; color:var(--muted); letter-spacing:.05em; margin-bottom:12px; font-weight:600; display:flex; align-items:center; gap:6px;}
+  .hero{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px 12px; box-shadow:var(--shadow); margin-bottom:14px;}
+  .hero .lbl{font-size:.76rem; color:var(--muted); letter-spacing:.06em;}
+  .hero .num{font-size:2.6rem; font-weight:800; line-height:1.12; margin:2px 0 8px; font-variant-numeric:tabular-nums;}
+  .hero .num small{font-size:.9rem; font-weight:600; color:var(--muted); margin-left:6px;}
+  .chips{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .chip{background:var(--accent-soft); border-radius:10px; padding:8px 4px; text-align:center;}
+  .chip .cv{font-size:.98rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .chip .ck{font-size:.64rem; color:var(--muted); margin-top:1px;}
+  .deltas{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .dl{background:var(--field); border-radius:10px; padding:8px; text-align:center;}
+  .dl .dk{font-size:.64rem; color:var(--muted);}
+  .dl .dv{font-size:.95rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .up{color:var(--warn);} .down{color:var(--good);} .flat{color:var(--muted);}
+  .epoc{font-size:.74rem; color:var(--muted); margin-top:9px; border-top:1px dashed var(--line); padding-top:7px;}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px; box-shadow:var(--shadow);}
+  .card h2{font-size:.8rem; color:var(--muted); letter-spacing:.05em; margin-bottom:12px; font-weight:600; display:flex; align-items:center; gap:6px; justify-content:space-between;}
+  .card h2 .hint{font-weight:400; letter-spacing:0; font-size:.72rem;}
+
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
   .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 12px;}
-  label{display:block; font-size:.74rem; color:var(--muted); margin-bottom:4px;}
-  input,select{
-    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px;
-    font-size:1rem; background:var(--field); color:var(--ink);
-    font-variant-numeric:tabular-nums; -webkit-appearance:none; appearance:none;
-  }
-  select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
-    background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%; background-size:5px 5px; background-repeat:no-repeat; padding-right:34px;}
+  label{display:block; font-size:.72rem; color:var(--muted); margin-bottom:4px;}
+  input,select{width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; font-size:1rem; background:var(--field); color:var(--ink); font-variant-numeric:tabular-nums; -webkit-appearance:none; appearance:none;}
+  select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%; background-size:5px 5px; background-repeat:no-repeat; padding-right:34px;}
   input:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent;}
-  .warn{font-size:.78rem; color:var(--warn); margin-top:10px; min-height:1em;}
-
-  .btn-row{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
-  button{border:none; border-radius:10px; padding:12px 16px; font-size:.95rem; font-weight:600; cursor:pointer;}
+  .warn{font-size:.76rem; color:var(--warn); margin-top:10px; min-height:1em;}
+  .btn-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  button{border:none; border-radius:10px; padding:11px 16px; font-size:.92rem; font-weight:600; cursor:pointer;}
   button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   .btn-primary{background:var(--accent); color:var(--on-accent);}
   .btn-ghost{background:var(--ghost); color:var(--ghost-ink);}
 
-  /* 历史 */
-  .day{
-    display:flex; justify-content:space-between; align-items:center;
-    border:1px solid var(--line); border-radius:12px; padding:11px 14px; margin-bottom:8px;
-    background:var(--card);
-  }
-  .day .d-l{font-size:.9rem; font-weight:700; font-variant-numeric:tabular-nums;}
-  .day .d-r{text-align:right;}
-  .day .d-t{font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--accent);}
-  .day .d-m{font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:2px;}
-  .empty{color:var(--muted); font-size:.82rem; text-align:center; padding:18px 0; border:1px dashed var(--line); border-radius:12px;}
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .st{background:var(--accent-soft); border-radius:10px; padding:9px 8px; text-align:center;}
+  .st .sv{font-size:1.02rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .st .sk{font-size:.66rem; color:var(--muted); margin-top:1px;}
 
-  /* toast */
-  .toast{
-    position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
-    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:999px;
-    font-size:.86rem; opacity:0; pointer-events:none; transition:opacity .25s ease;
-    box-shadow:var(--shadow); white-space:nowrap; z-index:10;
-  }
-  .toast.show{opacity:1;}
-  .toast.ok{background:var(--good); color:#fff;}
+  .chart-wrap{position:relative; width:100%; overflow-x:auto;}
+  svg{display:block; width:100%; height:auto;}
+  .empty{color:var(--muted); font-size:.8rem; text-align:center; padding:22px 0; border:1px dashed var(--line); border-radius:12px;}
+
+  .goal-note{font-size:.78rem; margin-top:10px; padding:9px 11px; border-radius:10px; background:var(--good-soft); color:var(--good);}
+  .goal-warn{background:var(--warn-soft); color:var(--warn);}
+  .bar{height:8px; border-radius:99px; background:var(--field); overflow:hidden; margin-top:8px;}
+  .bar i{display:block; height:100%; background:var(--accent); border-radius:99px;}
+
+  .tbl{overflow-x:auto; width:100%;}
+  table{width:100%; border-collapse:collapse; font-size:.76rem; font-variant-numeric:tabular-nums;}
+  th,td{border-bottom:1px solid var(--line); padding:8px 7px; text-align:right; white-space:nowrap;}
+  th{color:var(--muted); font-weight:500; font-size:.68rem;}
+  td:first-child,th:first-child{text-align:left;}
+  .delta-up{color:var(--warn);} .delta-down{color:var(--good);}
+
+  .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:999px; font-size:.85rem; opacity:0; pointer-events:none; transition:opacity .25s ease; box-shadow:var(--shadow); white-space:nowrap; z-index:10;}
+  .toast.show{opacity:1;} .toast.ok{background:var(--good); color:#fff;}
 </style>
-
+</head>
+<body>
 <div class="top">
-  <div class="brand">🔥 每日热量<span>台账</span></div>
+  <div class="brand">🔥 每日热量<span>&</span>⚖️ 体重管理</div>
   <div class="date" id="today"></div>
 </div>
 
-<!-- 结果置顶：先看数字 -->
-<div class="hero">
-  <div class="lbl">今日总消耗</div>
-  <div class="num"><span id="rTotal">—</span><small>kcal/天</small></div>
-  <div class="chips">
-    <div class="chip"><div class="cv" id="rBMR">–</div><div class="ck">BMR 基础</div></div>
-    <div class="chip"><div class="cv" id="rWalk">–</div><div class="ck">步行</div></div>
-    <div class="chip"><div class="cv" id="rAero">–</div><div class="ck">有氧</div></div>
-    <div class="chip"><div class="cv" id="rStr">–</div><div class="ck">力量</div></div>
-  </div>
-  <div class="epoc" id="epoc"></div>
+<div class="tabs">
+  <button class="tab active" id="tabBtnRec">今日记录</button>
+  <button class="tab" id="tabBtnLedger">体重台账</button>
 </div>
 
-<div class="card">
-  <h2>每日输入</h2>
-  <div class="grid2">
-    <div><label>体重 kg（默认 85）</label><input type="number" id="weight" value="85" min="30" max="200" step="0.1" inputmode="decimal"></div>
-    <div><label>体脂率 %（默认 25）</label><input type="number" id="bf" value="25" min="3" max="60" step="0.1" inputmode="decimal"></div>
-    <div><label>步行步数</label><input type="number" id="steps" value="8000" min="0" step="100" inputmode="numeric"></div>
-    <div><label>有氧时间（分钟）</label><input type="number" id="aeroMin" value="40" min="0" step="5" inputmode="numeric"></div>
-    <div><label>有氧平均心率 bpm</label><input type="number" id="aeroHR" value="150" min="80" max="200" inputmode="numeric"></div>
-    <div><label>力量训练时间（分钟）</label><input type="number" id="strMin" value="60" min="0" step="5" inputmode="numeric"></div>
-  </div>
-  <div style="margin-top:10px;"><label>力量强度</label>
-    <select id="strInt">
-      <option value="1">① 一般 · 组间充分休息（3.5 MET）</option>
-      <option value="2">② 高强度 · 少休息（6.0 MET）</option>
-      <option value="3">③ 循环 · 几乎不休息（8.0 MET）</option>
-    </select>
-  </div>
-  <div class="warn" id="warn"></div>
-  <div class="btn-row">
-    <button class="btn-primary" id="saveBtn">保存今日</button>
-    <button class="btn-ghost" id="clearBtn">清空记录</button>
-  </div>
-</div>
-
-<div class="card">
-  <h2>个人固定参数</h2>
-  <div class="grid3">
-    <div><label>性别</label>
-      <select id="sex"><option value="m" selected>男</option><option value="f">女</option></select>
+<!-- ===== 今日记录 ===== -->
+<section id="tab-rec">
+  <div class="hero">
+    <div class="lbl">今日总消耗</div>
+    <div class="num"><span id="rTotal">—</span><small>kcal/天</small></div>
+    <div class="chips">
+      <div class="chip"><div class="cv" id="rBMR">–</div><div class="ck">BMR 基础</div></div>
+      <div class="chip"><div class="cv" id="rWalk">–</div><div class="ck">步行</div></div>
+      <div class="chip"><div class="cv" id="rAero">–</div><div class="ck">有氧</div></div>
+      <div class="chip"><div class="cv" id="rStr">–</div><div class="ck">力量</div></div>
     </div>
-    <div><label>年龄（岁）</label><input type="number" id="age" value="28" min="15" max="80" inputmode="numeric"></div>
-    <div><label>身高 cm</label><input type="number" id="height" value="180" min="120" max="220" inputmode="numeric"></div>
+    <div class="epoc" id="epoc"></div>
   </div>
-  <div class="epoc">步幅按 身高×0.415 估算；有氧用 Keytel 心率公式；力量用 MET 法（不能用心率公式）。EPOC 后燃单独备注、不计入合计。</div>
-</div>
 
-<div class="card">
-  <h2>历史记录 <span style="font-weight:400;letter-spacing:0;">· 存于本机浏览器</span></h2>
-  <div id="list"></div>
-  <div class="empty" id="empty">暂无记录 —— 输入数据后点「保存今日」</div>
-</div>
+  <div class="card">
+    <h2>每日输入</h2>
+    <div class="grid2">
+      <div><label>体重 kg（默认 85）</label><input type="number" id="weight" value="85" min="30" max="200" step="0.1" inputmode="decimal"></div>
+      <div><label>体脂率 %（默认 25）</label><input type="number" id="bf" value="25" min="3" max="60" step="0.1" inputmode="decimal"></div>
+      <div><label>步行步数</label><input type="number" id="steps" value="8000" min="0" step="100" inputmode="numeric"></div>
+      <div><label>有氧时间（分钟）</label><input type="number" id="aeroMin" value="40" min="0" step="5" inputmode="numeric"></div>
+      <div><label>有氧平均心率 bpm</label><input type="number" id="aeroHR" value="150" min="80" max="200" inputmode="numeric"></div>
+      <div><label>力量训练时间（分钟）</label><input type="number" id="strMin" value="60" min="0" step="5" inputmode="numeric"></div>
+    </div>
+    <div style="margin-top:10px;"><label>力量强度</label>
+      <select id="strInt">
+        <option value="1">① 一般 · 组间充分休息（3.5 MET）</option>
+        <option value="2">② 高强度 · 少休息（6.0 MET）</option>
+        <option value="3">③ 循环 · 几乎不休息（8.0 MET）</option>
+      </select>
+    </div>
+    <div class="warn" id="warn"></div>
+    <div class="btn-row">
+      <button class="btn-primary" id="saveBtn">保存今日</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>个人固定参数</h2>
+    <div class="grid3">
+      <div><label>性别</label><select id="sex"><option value="m" selected>男</option><option value="f">女</option></select></div>
+      <div><label>年龄（岁）</label><input type="number" id="age" value="28" min="15" max="80" inputmode="numeric"></div>
+      <div><label>身高 cm</label><input type="number" id="height" value="180" min="120" max="220" inputmode="numeric"></div>
+    </div>
+    <div class="epoc">步幅 = 身高×0.415÷100；有氧用 Keytel 心率公式；力量用 MET 法。EPOC 后燃不计入合计。</div>
+  </div>
+</section>
+
+<!-- ===== 体重台账 ===== -->
+<section id="tab-ledger" style="display:none;">
+  <div class="hero">
+    <div class="lbl">当前体重</div>
+    <div class="num"><span id="curWeight">—</span><small>kg</small></div>
+    <div class="deltas">
+      <div class="dl"><div class="dv" id="dPrev">–</div><div class="dk">较上次</div></div>
+      <div class="dl"><div class="dv" id="dFirst">–</div><div class="dk">较首日</div></div>
+      <div class="dl"><div class="dv" id="dWeek">–</div><div class="dk">较上周</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>体重趋势 <span class="hint">与今日记录数据互通</span></h2>
+    <div class="chart-wrap" id="chartWrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>关键指标</h2>
+    <div class="stats">
+      <div class="st"><div class="sv" id="bmi">–</div><div class="sk" id="bmiCat">BMI</div></div>
+      <div class="st"><div class="sv" id="bfNow">–</div><div class="sk">体脂率</div></div>
+      <div class="st"><div class="sv" id="goalPct">–</div><div class="sk">目标进度</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>目标设定</h2>
+    <div class="grid2">
+      <div><label>目标体重（kg）</label><input type="number" id="goalW" value="75" min="40" max="150" step="0.1"></div>
+      <div><label>目标日期</label><input type="date" id="goalD"></div>
+    </div>
+    <div id="goalCalc"></div>
+    <div class="btn-row"><button class="btn-ghost" id="goalSave">保存目标</button></div>
+  </div>
+
+  <div class="card">
+    <h2>快速记录体重</h2>
+    <div class="grid2">
+      <div><label>日期（默认今天）</label><input type="date" id="recD"></div>
+      <div><label>体脂率 %（可选）</label><input type="number" id="recBf" placeholder="留空不更新" min="3" max="60" step="0.1"></div>
+      <div><label>体重 kg</label><input type="number" id="recW" placeholder="如 84.5" min="30" max="200" step="0.1"></div>
+    </div>
+    <div class="btn-row"><button class="btn-primary" id="recSave">记录体重</button></div>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:8px;">同日已有记录时仅更新体重/体脂，保留运动数据。</div>
+  </div>
+
+  <div class="card">
+    <h2>每日台账 <span class="hint" id="cnt"></span></h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>日期</th><th>体重 kg</th><th>总消耗</th><th>较上次</th><th>BMI</th></tr></thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty">暂无记录 —— 在「今日记录」保存每天，或在上方快速记录</div>
+    <div class="btn-row"><button class="btn-ghost" id="exportBtn">⬇ 导出 CSV</button></div>
+  </div>
+</section>
 
 <div class="toast" id="toast"></div>
 
 <script>
 const $=id=>document.getElementById(id);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const AGE=28, HEIGHT=180, SEX='m';
 
-function calc(){
-  const sex=$('sex').value, age=+$('age').value||28, height=+$('height').value||180;
+function loadLedger(){try{return JSON.parse(localStorage.getItem('ledger')||'[]');}catch(e){return [];}}
+function storeLedger(a){try{localStorage.setItem('ledger',JSON.stringify(a));}catch(e){}}
+function loadGoals(){try{return JSON.parse(localStorage.getItem('weightGoals')||'{}');}catch(e){return {}};}
+function storeGoals(g){try{localStorage.setItem('weightGoals',JSON.stringify(g));}catch(e){}}
+
+function computeCalories(r){
+  const weight=+r.weight, bf=+r.bf, steps=+r.steps||0, aeroMin=+r.aeroMin||0, aeroHR=+r.aeroHR||150, strMin=+r.strMin||0, strInt=+r.strInt||1;
+  const bmr=370+21.6*weight*(1-bf/100);
+  const km=steps*(HEIGHT*0.415/100)/1000;
+  const walk=weight*km*0.8;
+  const perMin=(SEX==='m')?(-55.0969+0.6309*aeroHR+0.1988*weight+0.2017*AGE)/4.184:(-20.4022+0.4472*aeroHR-0.1263*weight+0.074*AGE)/4.184;
+  const aero=Math.max(0,perMin*aeroMin);
+  const str=[3.5,6.0,8.0][strInt-1]*weight*strMin/60;
+  return {bmr,walk,aero,str,total:Math.round(bmr)+Math.round(walk)+Math.round(aero)+Math.round(str)};
+}
+function upsert(date,w,bf){
+  const rows=loadLedger();
+  const i=rows.findIndex(r=>r.date===date);
+  const e=i>=0?rows[i]:{};
+  const rec={date,weight:w,bf:bf??e.bf??25,steps:e.steps??0,aeroMin:e.aeroMin??0,aeroHR:e.aeroHR??150,strMin:e.strMin??0,strInt:e.strInt??1};
+  Object.assign(rec,computeCalories(rec));
+  if(i>=0)rows[i]=rec;else rows.push(rec);
+  rows.sort((a,b)=>a.date<b.date?-1:1);
+  storeLedger(rows);
+}
+function series(){
+  const map={};
+  loadLedger().forEach(r=>{ if(+r.weight>0) map[r.date]=r; });
+  return Object.keys(map).sort().map(d=>map[d]);
+}
+function fmtDelta(a,b){ if(a==null||b==null) return {txt:'–',cls:'flat'}; const d=b-a; return {txt:(d>0?'+':'')+d.toFixed(1)+' kg', cls:d>0.05?'up':(d<-0.05?'down':'flat')}; }
+function toast(msg,ok){ const t=$('toast'); t.textContent=msg; t.className='toast show'+(ok?' ok':''); clearTimeout(toast._t); toast._t=setTimeout(()=>t.className='toast',1800); }
+
+/* ===== 今日记录 ===== */
+function calcRec(){
+  const sex=$('sex').value, age=+$('age').value||AGE, height=+$('height').value||HEIGHT;
   const weight=+$('weight').value||85, bf=+$('bf').value||25;
   const steps=+$('steps').value||0, aeroMin=+$('aeroMin').value||0, aeroHR=+$('aeroHR').value||150;
   const strMin=+$('strMin').value||0, strInt=+$('strInt').value||1;
-
-  const lean=weight*(1-bf/100);
-  const bmr=370+21.6*lean;                                   // Katch-McArdle
-
-  const stride=height*0.415/100;                            // m（cm→m）
-  const km=steps*stride/1000;
-  const walk=weight*km*0.8;                                  // 中速步行 0.8
-
-  const perMin=(sex==='m')
-    ?(-55.0969+0.6309*aeroHR+0.1988*weight+0.2017*age)/4.184
-    :(-20.4022+0.4472*aeroHR-0.1263*weight+0.074*age)/4.184; // Keytel
-  const aero=Math.max(0,perMin*aeroMin);
-
-  const MET=[3.5,6.0,8.0][strInt-1];
-  const str=MET*weight*strMin/60;
-
-  const total=Math.round(bmr)+Math.round(walk)+Math.round(aero)+Math.round(str);
-
-  $('rTotal').textContent=Math.round(total);
-  $('rBMR').textContent=Math.round(bmr);
-  $('rWalk').textContent=Math.round(walk);
-  $('rAero').textContent=Math.round(aero);
-  $('rStr').textContent=Math.round(str);
-  $('epoc').textContent='EPOC 后燃参考 +'+Math.round(str*0.12)+' kcal · 不计入合计';
-
+  const r={weight,bf,steps,aeroMin,aeroHR,strMin,strInt};
+  const c=computeCalories(r);
+  $('rTotal').textContent=c.total;
+  $('rBMR').textContent=Math.round(c.bmr);
+  $('rWalk').textContent=Math.round(c.walk);
+  $('rAero').textContent=Math.round(c.aero);
+  $('rStr').textContent=Math.round(c.str);
+  $('epoc').textContent='EPOC 后燃参考 +'+Math.round(c.str*0.12)+' kcal · 不计入合计';
   const warn=[];
   if(aeroHR>160)warn.push('心率 160+ 超出公式验证区间（90–150），建议用全程平均值');
   if(aeroHR<90)warn.push('心率过低，检查是否为有效有氧');
   $('warn').textContent=warn.join('；');
-
-  return {weight,bf,steps,aeroMin,aeroHR,strMin,strInt,bmr,walk,aero,str,total};
-}
-
-function store(arr){try{localStorage.setItem('ledger',JSON.stringify(arr));}catch(e){}}
-function load(){try{return JSON.parse(localStorage.getItem('ledger')||'[]');}catch(e){return [];}}
-
-function toast(msg,ok){
-  const t=$('toast'); t.textContent=msg; t.className='toast show'+(ok?' ok':'');
-  clearTimeout(toast._t); toast._t=setTimeout(()=>t.className='toast',1800);
+  return c;
 }
 $('saveBtn').onclick=()=>{
-  const rows=load(), rec={date:todayStr(),...calc()};
-  const i=rows.findIndex(x=>x.date===rec.date);
+  const rec={date:todayStr(),weight:+$('weight').value||85,bf:+$('bf').value||25,steps:+$('steps').value||0,aeroMin:+$('aeroMin').value||0,aeroHR:+$('aeroHR').value||150,strMin:+$('strMin').value||0,strInt:+$('strInt').value||1};
+  Object.assign(rec,computeCalories(rec));
+  const rows=loadLedger(); const i=rows.findIndex(x=>x.date===rec.date);
   if(i>=0)rows[i]=rec;else rows.push(rec);
-  store(rows); render(); toast('已保存 '+todayStr(),true);
+  storeLedger(rows);
+  toast('已保存 '+todayStr(),true);
 };
-$('clearBtn').onclick=()=>{if(confirm('确定清空全部历史记录？')){store([]);render();toast('已清空');}};
+['weight','bf','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calcRec));
 
-function render(){
-  const rows=load().slice().reverse();
-  $('empty').style.display=rows.length?'none':'block';
-  $('list').innerHTML=rows.map(r=>`
-    <div class="day">
-      <div class="d-l">${r.date}</div>
-      <div class="d-r">
-        <div class="d-t">${Math.round(r.total)} kcal</div>
-        <div class="d-m">基础 ${Math.round(r.bmr)} · 走 ${Math.round(r.walk)} · 有氧 ${Math.round(r.aero)} · 力 ${Math.round(r.str)}</div>
-      </div>
-    </div>`).join('');
+/* ===== 体重台账 ===== */
+function renderWeight(){
+  const s=series();
+  if(!s.length){ $('curWeight').textContent='—'; ['dPrev','dFirst','dWeek'].forEach(id=>{$(id).textContent='–';$(id).className='dv flat';}); $('bmi').textContent='–';$('bmiCat').textContent='BMI';$('bfNow').textContent='–';$('goalPct').textContent='–'; renderChart([]); renderTable(s); renderGoals(null); return; }
+  const last=s[s.length-1], first=s[0];
+  $('curWeight').textContent=(+last.weight).toFixed(1);
+  const prev=s.length>1?s[s.length-2]:null;
+  const dPrev=fmtDelta(prev?+prev.weight:null,+last.weight); $('dPrev').textContent=dPrev.txt; $('dPrev').className='dv '+dPrev.cls;
+  const dFirst=fmtDelta(+first.weight,+last.weight); $('dFirst').textContent=dFirst.txt; $('dFirst').className='dv '+dFirst.cls;
+  const cutoff=Date.now()-7*864e5; const wk=s.filter(r=>new Date(r.date).getTime()>=cutoff);
+  const wkBase=wk.length>1?wk[0]:null;
+  const dWeek=fmtDelta(wkBase?+wkBase.weight:null,+last.weight); $('dWeek').textContent=dWeek.txt; $('dWeek').className='dv '+dWeek.cls;
+  const bmi=+last.weight/((HEIGHT/100)**2);
+  $('bmi').textContent=bmi.toFixed(1);
+  $('bmiCat').textContent=(bmi<18.5?'偏瘦':(bmi<24?'正常':(bmi<28?'过重':'肥胖')))+' · BMI';
+  $('bfNow').textContent=last.bf?last.bf+'%':'–';
+  renderChart(s); renderTable(s); renderGoals(last);
 }
 
-['weight','bf','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calc));
+function renderChart(data){
+  const wrap=$('chartWrap');
+  if(!data||data.length<2){ wrap.innerHTML='<div class="empty">至少需要 2 条记录才能生成趋势图</div>'; return; }
+  const W=600,H=250,pl=34,pr=14,pt=16,pb=26,iw=W-pl-pr,ih=H-pt-pb;
+  const vals=data.map(r=>+r.weight);
+  let lo=Math.min(...vals),hi=Math.max(...vals);
+  const pad=Math.max(0.5,(hi-lo)*0.15); lo-=pad; hi+=pad;
+  const X=i=>pl+i/(data.length-1)*iw, Y=v=>pt+ih-(v-lo)/(hi-lo)*ih;
+  const series='#CB7F18';
+  const line=data.map((r,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(+r.weight).toFixed(1)}`).join(' ');
+  const area=`M${X(0).toFixed(1)},${Y(+data[0].weight).toFixed(1)} ${line.replace(/^M/,'L')} L${X(data.length-1).toFixed(1)},${Y(lo).toFixed(1)} L${X(0).toFixed(1)},${Y(lo).toFixed(1)} Z`;
+  let grid='',yticks='';
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4,y=Y(v);
+    grid+=`<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W-pr}" y2="${y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1"/>`;
+    yticks+=`<text x="${pl-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${v.toFixed(1)}</text>`; }
+  let xlabels='';
+  [0,Math.floor((data.length-1)/2),data.length-1].forEach(i=>{ const t=data[i].date.slice(5).replace('-','/');
+    xlabels+=`<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${t}</text>`; });
+  const dots=data.map((r,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(+r.weight).toFixed(1)}" r="4" fill="${series}" stroke="var(--card)" stroke-width="2"/>`).join('');
+  const end=data[data.length-1], ex=X(data.length-1), ey=Y(+end.weight);
+  const eLabel=`<text x="${(ex+10).toFixed(1)}" y="${(ey+3).toFixed(1)}" font-size="11" font-weight="700" fill="var(--ink)">${(+end.weight).toFixed(1)} kg</text>`;
+  wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="体重随时间变化趋势">${grid}${yticks}${xlabels}<path d="${area}" fill="${series}" fill-opacity="0.10"/><path d="${line}" fill="none" stroke="${series}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${eLabel}<rect x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent" id="hitArea"/><line id="xh" x1="0" y1="0" x2="0" y2="0" stroke="var(--muted)" stroke-width="1" style="display:none"/><circle id="hd" r="5" fill="${series}" stroke="var(--card)" stroke-width="2" style="display:none"/></svg><div id="tip" style="position:absolute;display:none;pointer-events:none;background:var(--ink);color:var(--bg);font-size:.76rem;padding:6px 10px;border-radius:8px;white-space:nowrap;box-shadow:var(--shadow);z-index:5;"></div>`;
+  const hit=wrap.querySelector('#hitArea'),xh=wrap.querySelector('#xh'),hd=wrap.querySelector('#hd'),tip=wrap.querySelector('#tip');
+  const px=i=>X(i),py=i=>Y(+data[i].weight);
+  function showTip(i,cx){
+    xh.setAttribute('x1',px(i)); xh.setAttribute('x2',px(i)); xh.setAttribute('y1',pt); xh.setAttribute('y2',H-pb); xh.style.display='';
+    hd.setAttribute('cx',px(i)); hd.setAttribute('cy',py(i)); hd.style.display='';
+    tip.style.display='block';
+    tip.innerHTML=`<b>${data[i].date}</b>　${(+data[i].weight).toFixed(1)} kg${data[i].bf?' · 体脂 '+data[i].bf+'%':''}`;
+    const rect=wrap.getBoundingClientRect(), sx=(cx-rect.left)/rect.width*W;
+    tip.style.left=Math.min(Math.max(sx-60,0),rect.width-120)+'px';
+    tip.style.top=(py(i)/H*rect.height)+10+'px';
+  }
+  hit.addEventListener('mousemove',e=>{ const rect=wrap.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*W;
+    const i=Math.max(0,Math.min(data.length-1,Math.round((sx-pl)/iw*(data.length-1)))); showTip(i,e.clientX); });
+  hit.addEventListener('mouseleave',()=>{ xh.style.display='none'; hd.style.display='none'; tip.style.display='none'; });
+  hit.addEventListener('touchstart',e=>{ const t=e.touches[0]; showTip(Math.floor(data.length/2),t.clientX); },{passive:true});
+}
+
+function renderTable(s){
+  $('cnt').textContent=s.length?('共 '+s.length+' 条'):'';
+  $('empty').style.display=s.length?'none':'block';
+  let html='';
+  for(let i=0;i<s.length;i++){
+    const r=s[i], prev=i>0?s[i-1]:null, d=prev?(+r.weight-+prev.weight):null;
+    const dTxt=d==null?'—':((d>0?'+':'')+d.toFixed(1));
+    const dCls=d==null?'':(d>0.05?'delta-up':(d<-0.05?'delta-down':''));
+    const bmi=(+r.weight/((HEIGHT/100)**2)).toFixed(1);
+    html+=`<tr><td>${r.date}</td><td>${(+r.weight).toFixed(1)}</td><td>${Math.round(r.total)}</td><td class="${dCls}">${dTxt}</td><td>${bmi}</td></tr>`;
+  }
+  $('tblBody').innerHTML=html;
+}
+
+function renderGoals(last){
+  const g=loadGoals();
+  if(g.goalW){ $('goalW').value=g.goalW; if(g.goalD)$('goalD').value=g.goalD; }
+  if(!last){ $('goalCalc').innerHTML=''; $('goalPct').textContent='–'; return; }
+  const goalW=+$('goalW').value||last.weight, goalD=$('goalD').value;
+  const cur=+last.weight, diff=cur-goalW;
+  const s=series();
+  const start=+s[0].weight;
+  const totalChange=start-goalW, done=start-cur;
+  const pct=totalChange>0?Math.min(100,Math.max(0,done/totalChange*100)):(done<0?100:0);
+  $('goalPct').textContent=Math.round(pct)+'%';
+  if(goalD){
+    const weeks=(new Date(goalD)-new Date())/6048e5;
+    if(weeks>0){
+      const pace=diff/weeks;
+      const safe=Math.abs(pace)<=1.0;
+      $('goalCalc').innerHTML=`<div class="goal-note${safe?'':' goal-warn'}">目标 ${goalW} kg，距目标差 ${diff.toFixed(1)} kg，距今约 ${weeks.toFixed(1)} 周 → ${pace.toFixed(2)} kg/周。${safe?'处于安全区间（≤1 kg/周）。':(pace>0?'建议放慢，每周 ≤1 kg 更易保持。':'增重节奏合理。')}</div><div class="bar"><i style="width:${pct}%"></i></div>`;
+    } else { $('goalCalc').innerHTML='<div class="goal-warn goal-note">目标日期已过，请调整日期。</div>'; }
+  } else {
+    $('goalCalc').innerHTML=`<div class="goal-note">目标体重 ${goalW} kg，当前差 ${diff.toFixed(1)} kg。设定目标日期后可计算每周进度。</div><div class="bar"><i style="width:${pct}%"></i></div>`;
+  }
+}
+
+$('recSave').onclick=()=>{
+  const date=$('recD').value||todayStr();
+  const w=parseFloat($('recW').value);
+  if(!w||w<=0){ toast('请输入体重'); return; }
+  const bf=$('recBf').value?parseFloat($('recBf').value):null;
+  upsert(date,w,bf);
+  toast('已记录 '+date,true); renderWeight();
+};
+$('goalSave').onclick=()=>{ storeGoals({goalW:+$('goalW').value,goalD:$('goalD').value}); toast('目标已保存',true); renderGoals(series().slice(-1)[0]||null); };
+$('exportBtn').onclick=()=>{
+  const s=series();
+  if(!s.length){ toast('暂无数据可导出'); return; }
+  const head='日期,体重kg,较上次,BMI,总消耗kcal,步行,有氧,力量';
+  const body=s.map((r,i)=>{ const prev=i>0?s[i-1]:null, d=prev?(+r.weight-+prev.weight).toFixed(1):'';
+    return [r.date,(+r.weight).toFixed(1),d,(+r.weight/((HEIGHT/100)**2)).toFixed(1),Math.round(r.total),Math.round(r.walk),Math.round(r.aero),Math.round(r.str)].join(','); }).join('\n');
+  const blob=new Blob(['﻿'+head+'\n'+body],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='热量与体重台账.csv'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+/* ===== 标签切换 ===== */
+function showTab(name){
+  $('tab-rec').style.display=name==='rec'?'':'none';
+  $('tab-ledger').style.display=name==='ledger'?'':'none';
+  $('tabBtnRec').className='tab'+(name==='rec'?' active':'');
+  $('tabBtnLedger').className='tab'+(name==='ledger'?' active':'');
+  try{localStorage.setItem('lastTab',name);}catch(e){}
+  if(name==='ledger') renderWeight();
+}
+$('tabBtnRec').onclick=()=>showTab('rec');
+$('tabBtnLedger').onclick=()=>showTab('ledger');
+
+/* ===== 初始化 ===== */
 $('today').textContent=todayStr();
-calc(); render();
+$('recD').value=todayStr();
+$('goalD').value=new Date(Date.now()+90*864e5).toISOString().slice(0,10);
+calcRec();
+try{ showTab(localStorage.getItem('lastTab')==='ledger'?'ledger':'rec'); }catch(e){ showTab('rec'); }
+renderWeight();
 </script>
+</body>
+</html>
