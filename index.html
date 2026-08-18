@@ -54,6 +54,8 @@
   .dl .dv{font-size:.95rem; font-weight:700; font-variant-numeric:tabular-nums;}
   .up{color:var(--warn);} .down{color:var(--good);} .flat{color:var(--muted);}
   .epoc{font-size:.74rem; color:var(--muted); margin-top:9px; border-top:1px dashed var(--line); padding-top:7px;}
+  .deficit{font-size:.92rem; font-weight:700; font-variant-numeric:tabular-nums; margin-top:10px;}
+  .def-note{font-size:.72rem; margin-bottom:10px;}
 
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px; box-shadow:var(--shadow);}
   .card h2{font-size:.8rem; color:var(--muted); letter-spacing:.05em; margin-bottom:12px; font-weight:600; display:flex; align-items:center; gap:6px; justify-content:space-between;}
@@ -119,12 +121,14 @@
       <div class="chip"><div class="cv" id="rAero">–</div><div class="ck">有氧</div></div>
       <div class="chip"><div class="cv" id="rStr">–</div><div class="ck">力量</div></div>
     </div>
+    <div class="deficit" id="deficitLine">录入摄入热量后可显示今日缺口</div>
     <div class="epoc" id="epoc"></div>
   </div>
 
   <div class="card">
     <h2>每日输入</h2>
     <div class="grid2">
+      <div style="grid-column:1/-1;"><label>今日摄入热量 kcal（可选 · 用于计算热量缺口）</label><input type="number" id="intake" value="0" min="0" max="10000" step="50" inputmode="numeric"></div>
       <div><label>体重 kg（默认 85）</label><input type="number" id="weight" value="85" min="30" max="200" step="0.1" inputmode="decimal"></div>
       <div><label>体脂率 %（默认 25）</label><input type="number" id="bf" value="25" min="3" max="60" step="0.1" inputmode="decimal"></div>
       <div><label>步行步数</label><input type="number" id="steps" value="8000" min="0" step="100" inputmode="numeric"></div>
@@ -174,6 +178,12 @@
   </div>
 
   <div class="card">
+    <h2>热量缺口 × 体重变化 <span class="hint">摄入 vs 消耗 · 7700 kcal ≈ 1 kg</span></h2>
+    <div class="def-note" id="defStat"></div>
+    <div class="chart-wrap" id="defChartWrap"></div>
+  </div>
+
+  <div class="card">
     <h2>关键指标</h2>
     <div class="stats">
       <div class="st"><div class="sv" id="bmi">–</div><div class="sk" id="bmiCat">BMI</div></div>
@@ -207,7 +217,7 @@
     <h2>每日台账 <span class="hint" id="cnt"></span></h2>
     <div class="tbl">
       <table>
-        <thead><tr><th>日期</th><th>体重 kg</th><th>总消耗</th><th>较上次</th><th>BMI</th></tr></thead>
+        <thead><tr><th>日期</th><th>体重 kg</th><th>总消耗</th><th>摄入</th><th>缺口</th><th>较上次</th><th>BMI</th></tr></thead>
         <tbody id="tblBody"></tbody>
       </table>
     </div>
@@ -242,7 +252,7 @@ function upsert(date,w,bf){
   const rows=loadLedger();
   const i=rows.findIndex(r=>r.date===date);
   const e=i>=0?rows[i]:{};
-  const rec={date,weight:w,bf:bf??e.bf??25,steps:e.steps??0,aeroMin:e.aeroMin??0,aeroHR:e.aeroHR??150,strMin:e.strMin??0,strInt:e.strInt??1};
+  const rec={date,weight:w,bf:bf??e.bf??25,intake:e.intake??0,steps:e.steps??0,aeroMin:e.aeroMin??0,aeroHR:e.aeroHR??150,strMin:e.strMin??0,strInt:e.strInt??1};
   Object.assign(rec,computeCalories(rec));
   if(i>=0)rows[i]=rec;else rows.push(rec);
   rows.sort((a,b)=>a.date<b.date?-1:1);
@@ -270,6 +280,10 @@ function calcRec(){
   $('rAero').textContent=Math.round(c.aero);
   $('rStr').textContent=Math.round(c.str);
   $('epoc').textContent='EPOC 后燃参考 +'+Math.round(c.str*0.12)+' kcal · 不计入合计';
+  const intake=+$('intake').value||0, deficit=c.total-intake;
+  const dl=$('deficitLine');
+  dl.textContent=intake>0?`今日缺口 ${deficit>=0?'+':''}${Math.round(deficit)} kcal（消耗 ${c.total} − 摄入 ${intake}）`:'录入摄入热量后可显示今日缺口';
+  dl.style.color=intake>0?(deficit>=0?'var(--good)':'var(--warn)'):'';
   const warn=[];
   if(aeroHR>160)warn.push('心率 160+ 超出公式验证区间（90–150），建议用全程平均值');
   if(aeroHR<90)warn.push('心率过低，检查是否为有效有氧');
@@ -277,19 +291,19 @@ function calcRec(){
   return c;
 }
 $('saveBtn').onclick=()=>{
-  const rec={date:todayStr(),weight:+$('weight').value||85,bf:+$('bf').value||25,steps:+$('steps').value||0,aeroMin:+$('aeroMin').value||0,aeroHR:+$('aeroHR').value||150,strMin:+$('strMin').value||0,strInt:+$('strInt').value||1};
+  const rec={date:todayStr(),weight:+$('weight').value||85,bf:+$('bf').value||25,intake:+$('intake').value||0,steps:+$('steps').value||0,aeroMin:+$('aeroMin').value||0,aeroHR:+$('aeroHR').value||150,strMin:+$('strMin').value||0,strInt:+$('strInt').value||1};
   Object.assign(rec,computeCalories(rec));
   const rows=loadLedger(); const i=rows.findIndex(x=>x.date===rec.date);
   if(i>=0)rows[i]=rec;else rows.push(rec);
   storeLedger(rows);
   toast('已保存 '+todayStr(),true);
 };
-['weight','bf','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calcRec));
+['weight','bf','intake','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calcRec));
 
 /* ===== 体重台账 ===== */
 function renderWeight(){
   const s=series();
-  if(!s.length){ $('curWeight').textContent='—'; ['dPrev','dFirst','dWeek'].forEach(id=>{$(id).textContent='–';$(id).className='dv flat';}); $('bmi').textContent='–';$('bmiCat').textContent='BMI';$('bfNow').textContent='–';$('goalPct').textContent='–'; renderChart([]); renderTable(s); renderGoals(null); return; }
+  if(!s.length){ $('curWeight').textContent='—'; ['dPrev','dFirst','dWeek'].forEach(id=>{$(id).textContent='–';$(id).className='dv flat';}); $('bmi').textContent='–';$('bmiCat').textContent='BMI';$('bfNow').textContent='–';$('goalPct').textContent='–'; renderChart([]); renderDeficitChart(); renderTable(s); renderGoals(null); return; }
   const last=s[s.length-1], first=s[0];
   $('curWeight').textContent=(+last.weight).toFixed(1);
   const prev=s.length>1?s[s.length-2]:null;
@@ -302,7 +316,7 @@ function renderWeight(){
   $('bmi').textContent=bmi.toFixed(1);
   $('bmiCat').textContent=(bmi<18.5?'偏瘦':(bmi<24?'正常':(bmi<28?'过重':'肥胖')))+' · BMI';
   $('bfNow').textContent=last.bf?last.bf+'%':'–';
-  renderChart(s); renderTable(s); renderGoals(last);
+  renderChart(s); renderDeficitChart(); renderTable(s); renderGoals(last);
 }
 
 function renderChart(data){
@@ -344,6 +358,84 @@ function renderChart(data){
   hit.addEventListener('touchstart',e=>{ const t=e.touches[0]; showTip(Math.floor(data.length/2),t.clientX); },{passive:true});
 }
 
+function renderDeficitChart(){
+  const wrap=$('defChartWrap'), stat=$('defStat');
+  const recs=loadLedger().filter(r=>r.date).sort((a,b)=>a.date<b.date?-1:1);
+  const wRecs=recs.filter(r=>+r.weight>0), iRecs=recs.filter(r=>+r.intake>0);
+  if(!wRecs.length&&!iRecs.length){ wrap.innerHTML='<div class="empty">暂无记录</div>'; stat.innerHTML=''; return; }
+  let cum=0; iRecs.forEach(r=>cum+=(+r.total-+r.intake));
+  let statHtml='', warnFlag=false;
+  if(wRecs.length>=2&&iRecs.length>=1){
+    const th=-cum/7700, act=+wRecs[wRecs.length-1].weight-+wRecs[0].weight;
+    const dir=(th<0&&act<0)||(th>0&&act>0)||Math.abs(act)<0.3;
+    warnFlag=!dir&&Math.abs(th)>=0.5;
+    statHtml=`累计缺口 <b>${cum>=0?'+':''}${Math.round(cum)} kcal</b>（理论 ${th>=0?'+':''}${th.toFixed(1)} kg）· 实际体重 ${act>=0?'+':''}${act.toFixed(1)} kg — ${warnFlag?'⚠️ 方向不符：可能饮食记录不全或水分波动':'✅ 方向一致'}`;
+  } else if(iRecs.length>=1){
+    statHtml=`已录入 ${iRecs.length} 天摄入，累计缺口 ${cum>=0?'+':''}${Math.round(cum)} kcal`;
+  } else {
+    statHtml='尚无摄入记录 —— 在「今日记录」录入摄入热量后，这里会显示缺口与体重的对照';
+  }
+  stat.innerHTML=`<div class="goal-note${warnFlag?' goal-warn':''}">${statHtml}</div>`;
+  const all=[...new Set([...wRecs.map(r=>r.date),...iRecs.map(r=>r.date)])].sort();
+  if(all.length<2){ wrap.innerHTML='<div class="empty">至少需要 2 个不同日期</div>'; return; }
+  const W=600,H=340,pl=36,pr=12,pb=26,topTop=14,topH=132,gap=20;
+  const botTop=topTop+topH+gap, botH=H-pb-botTop, iw=W-pl-pr;
+  const t0=new Date(all[0]).getTime(), t1=new Date(all[all.length-1]).getTime();
+  const X=d=>{ const t=new Date(d).getTime(); return t1===t0?pl+iw/2:pl+(t-t0)/(t1-t0)*iw; };
+  let loD=0,hiD=0; iRecs.forEach(r=>{ const d=+r.total-+r.intake; if(d<loD)loD=d; if(d>hiD)hiD=d; });
+  const dPad=Math.max(80,(hiD-loD)*0.12); loD-=dPad; hiD+=dPad;
+  const YD=v=>topTop+topH-(v-loD)/(hiD-loD)*topH;
+  let loW=0,hiW=1;
+  if(wRecs.length){ loW=Infinity;hiW=-Infinity; wRecs.forEach(r=>{ loW=Math.min(loW,+r.weight); hiW=Math.max(hiW,+r.weight); }); const wPad=Math.max(0.3,(hiW-loW)*0.15); loW-=wPad; hiW+=wPad; }
+  const YW=v=>botTop+botH-(v-loW)/(hiW-loW)*botH;
+  let grid='',ytop='',ybot='';
+  for(let i=0;i<=3;i++){ const v=loD+(hiD-loD)*i/3,y=YD(v);
+    grid+=`<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W-pr}" y2="${y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1"/>`;
+    ytop+=`<text x="${pl-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${Math.round(v)}</text>`; }
+  if(wRecs.length){ for(let i=0;i<=3;i++){ const v=loW+(hiW-loW)*i/3,y=YW(v);
+    grid+=`<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W-pr}" y2="${y.toFixed(1)}" stroke="var(--chart-grid)" stroke-width="1"/>`;
+    ybot+=`<text x="${pl-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${v.toFixed(1)}</text>`; } }
+  const zy=YD(0);
+  grid+=`<line x1="${pl}" y1="${zy.toFixed(1)}" x2="${W-pr}" y2="${zy.toFixed(1)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 4"/>`;
+  const bw=Math.min(16,(iw/all.length)*0.6);
+  let bars='';
+  iRecs.forEach(r=>{ const d=+r.total-+r.intake,x=X(r.date),y0=YD(0),y1=YD(d);
+    bars+=`<rect x="${(x-bw/2).toFixed(1)}" y="${Math.min(y0,y1).toFixed(1)}" width="${bw}" height="${Math.max(1,Math.abs(y1-y0)).toFixed(1)}" rx="2" fill="${d>=0?'var(--good)':'var(--warn)'}"/>`; });
+  let lineP='',areaP='',dots='';
+  if(wRecs.length){
+    const pts=wRecs.map(r=>`${X(r.date).toFixed(1)},${YW(+r.weight).toFixed(1)}`);
+    const line=pts.map((p,i)=>`${i?'L':'M'}${p}`).join(' ');
+    const area=`M${pts[0]}L${pts.slice(1).join('L')}L${X(wRecs[wRecs.length-1].date).toFixed(1)},${YW(loW).toFixed(1)}L${X(wRecs[0].date).toFixed(1)},${YW(loW).toFixed(1)}Z`;
+    lineP=`<path d="${line}" fill="none" stroke="#CB7F18" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    areaP=`<path d="${area}" fill="#CB7F18" fill-opacity="0.10"/>`;
+    dots=wRecs.map(r=>`<circle cx="${X(r.date).toFixed(1)}" cy="${YW(+r.weight).toFixed(1)}" r="3.5" fill="#CB7F18" stroke="var(--card)" stroke-width="2"/>`).join('');
+  }
+  let xlabels='';
+  [0,Math.floor((all.length-1)/2),all.length-1].forEach(i=>{ const t=all[i].slice(5).replace('-','/');
+    xlabels+=`<text x="${X(all[i]).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${t}</text>`; });
+  const lbls=`<text x="${pl+4}" y="${topTop+11}" font-size="9" fill="var(--muted)">热量缺口 kcal/天</text><text x="${pl+4}" y="${botTop+11}" font-size="9" fill="var(--muted)">体重 kg</text>`;
+  wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每日热量缺口与体重变化">${grid}${ytop}${ybot}${lbls}${bars}${areaP}${lineP}${dots}${xlabels}<rect x="${pl}" y="${topTop}" width="${iw}" height="${H-pb-topTop}" fill="transparent" id="hit2"/><line id="x2" x1="0" y1="0" x2="0" y2="0" stroke="var(--muted)" stroke-width="1" style="display:none"/></svg><div id="tip2" style="position:absolute;display:none;pointer-events:none;background:var(--ink);color:var(--bg);font-size:.76rem;padding:6px 10px;border-radius:8px;white-space:nowrap;box-shadow:var(--shadow);z-index:5;"></div>`;
+  const hit=wrap.querySelector('#hit2'),x2=wrap.querySelector('#x2'),tip=wrap.querySelector('#tip2');
+  function tipAt(i,cx){
+    const d=all[i], rec=recs.find(r=>r.date===d);
+    const intake=rec&&+rec.intake>0?Math.round(rec.intake):'–', tot=rec?Math.round(rec.total):'–';
+    const def=rec&&+rec.intake>0?Math.round(rec.total-rec.intake):'–';
+    const wt=rec&&+rec.weight>0?(+rec.weight).toFixed(1):'–';
+    x2.setAttribute('x1',X(d)); x2.setAttribute('x2',X(d)); x2.setAttribute('y1',topTop); x2.setAttribute('y2',H-pb); x2.style.display='';
+    tip.style.display='block';
+    tip.innerHTML=`<b>${d}</b>　摄入 ${intake} · 消耗 ${tot}<br>缺口 ${def} kcal · 体重 ${wt} kg`;
+    const rect=wrap.getBoundingClientRect(), sx=(cx-rect.left)/rect.width*W;
+    tip.style.left=Math.min(Math.max(sx-80,0),rect.width-170)+'px';
+    tip.style.top='14px';
+  }
+  hit.addEventListener('mousemove',e=>{ const rect=wrap.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*W;
+    let i=all.length-1; const t=t0+sx/iw*(t1-t0);
+    for(let k=0;k<all.length;k++){ if(new Date(all[k]).getTime()<=t) i=k; }
+    tipAt(i,e.clientX); });
+  hit.addEventListener('mouseleave',()=>{ x2.style.display='none'; tip.style.display='none'; });
+  hit.addEventListener('touchstart',e=>{ const t=e.touches[0]; tipAt(Math.floor(all.length/2),t.clientX); },{passive:true});
+}
+
 function renderTable(s){
   $('cnt').textContent=s.length?('共 '+s.length+' 条'):'';
   $('empty').style.display=s.length?'none':'block';
@@ -353,7 +445,8 @@ function renderTable(s){
     const dTxt=d==null?'—':((d>0?'+':'')+d.toFixed(1));
     const dCls=d==null?'':(d>0.05?'delta-up':(d<-0.05?'delta-down':''));
     const bmi=(+r.weight/((HEIGHT/100)**2)).toFixed(1);
-    html+=`<tr><td>${r.date}</td><td>${(+r.weight).toFixed(1)}</td><td>${Math.round(r.total)}</td><td class="${dCls}">${dTxt}</td><td>${bmi}</td></tr>`;
+    const def=r.intake?Math.round(r.total-r.intake):null;
+    html+=`<tr><td>${r.date}</td><td>${(+r.weight).toFixed(1)}</td><td>${Math.round(r.total)}</td><td>${r.intake?Math.round(r.intake):'–'}</td><td class="${def==null?'':(def>0?'delta-down':'delta-up')}">${def==null?'–':(def>0?'+':'')+def}</td><td class="${dCls}">${dTxt}</td><td>${bmi}</td></tr>`;
   }
   $('tblBody').innerHTML=html;
 }
@@ -393,9 +486,9 @@ $('goalSave').onclick=()=>{ storeGoals({goalW:+$('goalW').value,goalD:$('goalD')
 $('exportBtn').onclick=()=>{
   const s=series();
   if(!s.length){ toast('暂无数据可导出'); return; }
-  const head='日期,体重kg,较上次,BMI,总消耗kcal,步行,有氧,力量';
+  const head='日期,体重kg,较上次,BMI,总消耗kcal,摄入kcal,缺口kcal,步行,有氧,力量';
   const body=s.map((r,i)=>{ const prev=i>0?s[i-1]:null, d=prev?(+r.weight-+prev.weight).toFixed(1):'';
-    return [r.date,(+r.weight).toFixed(1),d,(+r.weight/((HEIGHT/100)**2)).toFixed(1),Math.round(r.total),Math.round(r.walk),Math.round(r.aero),Math.round(r.str)].join(','); }).join('\n');
+    return [r.date,(+r.weight).toFixed(1),d,(+r.weight/((HEIGHT/100)**2)).toFixed(1),Math.round(r.total),r.intake?Math.round(r.intake):'',r.intake?Math.round(r.total-r.intake):'',Math.round(r.walk),Math.round(r.aero),Math.round(r.str)].join(','); }).join('\n');
   const blob=new Blob(['﻿'+head+'\n'+body],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='热量与体重台账.csv'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
