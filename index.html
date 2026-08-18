@@ -186,7 +186,7 @@ function calc(){
   const MET=[3.5,6.0,8.0][strInt-1];
   const str=MET*weight*strMin/60;
 
-  const total=bmr+walk+aero+str;
+  const total=Math.round(bmr)+Math.round(walk)+Math.round(aero)+Math.round(str);
 
   $('rTotal').textContent=Math.round(total);
   $('rBMR').textContent=Math.round(bmr);
