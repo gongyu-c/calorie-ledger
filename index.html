@@ -128,13 +128,19 @@
   <div class="card">
     <h2>每日输入</h2>
     <div class="grid2">
-      <div style="grid-column:1/-1;"><label>今日摄入热量 kcal（可选 · 用于计算热量缺口）</label><input type="number" id="intake" value="0" min="0" max="10000" step="50" inputmode="numeric"></div>
       <div><label>体重 kg（默认 85）</label><input type="number" id="weight" value="85" min="30" max="200" step="0.1" inputmode="decimal"></div>
       <div><label>体脂率 %（默认 25）</label><input type="number" id="bf" value="25" min="3" max="60" step="0.1" inputmode="decimal"></div>
       <div><label>步行步数</label><input type="number" id="steps" value="8000" min="0" step="100" inputmode="numeric"></div>
       <div><label>有氧时间（分钟）</label><input type="number" id="aeroMin" value="40" min="0" step="5" inputmode="numeric"></div>
       <div><label>有氧平均心率 bpm</label><input type="number" id="aeroHR" value="150" min="80" max="200" inputmode="numeric"></div>
       <div><label>力量训练时间（分钟）</label><input type="number" id="strMin" value="60" min="0" step="5" inputmode="numeric"></div>
+    </div>
+    <div style="margin-top:10px;"><label>今日摄入热量 kcal（可选 · 三餐自动求和算缺口）</label>
+      <div class="grid3">
+        <div><label>早餐</label><input type="number" id="intakeB" value="0" min="0" max="10000" step="50" inputmode="numeric"></div>
+        <div><label>午餐</label><input type="number" id="intakeL" value="0" min="0" max="10000" step="50" inputmode="numeric"></div>
+        <div><label>晚餐</label><input type="number" id="intakeD" value="0" min="0" max="10000" step="50" inputmode="numeric"></div>
+      </div>
     </div>
     <div style="margin-top:10px;"><label>力量强度</label>
       <select id="strInt">
@@ -252,7 +258,9 @@ function upsert(date,w,bf){
   const rows=loadLedger();
   const i=rows.findIndex(r=>r.date===date);
   const e=i>=0?rows[i]:{};
-  const rec={date,weight:w,bf:bf??e.bf??25,intake:e.intake??0,steps:e.steps??0,aeroMin:e.aeroMin??0,aeroHR:e.aeroHR??150,strMin:e.strMin??0,strInt:e.strInt??1};
+  const hasParts=e.intakeB||e.intakeL||e.intakeD;
+  const intakeB=e.intakeB??0, intakeL=e.intakeL??0, intakeD=e.intakeD??0;
+  const rec={date,weight:w,bf:bf??e.bf??25,intakeB,intakeL,intakeD,intake:hasParts?intakeB+intakeL+intakeD:(e.intake??0),steps:e.steps??0,aeroMin:e.aeroMin??0,aeroHR:e.aeroHR??150,strMin:e.strMin??0,strInt:e.strInt??1};
   Object.assign(rec,computeCalories(rec));
   if(i>=0)rows[i]=rec;else rows.push(rec);
   rows.sort((a,b)=>a.date<b.date?-1:1);
@@ -265,6 +273,7 @@ function series(){
 }
 function fmtDelta(a,b){ if(a==null||b==null) return {txt:'–',cls:'flat'}; const d=b-a; return {txt:(d>0?'+':'')+d.toFixed(1)+' kg', cls:d>0.05?'up':(d<-0.05?'down':'flat')}; }
 function toast(msg,ok){ const t=$('toast'); t.textContent=msg; t.className='toast show'+(ok?' ok':''); clearTimeout(toast._t); toast._t=setTimeout(()=>t.className='toast',1800); }
+function sumIntake(){ return (+$('intakeB').value||0)+(+$('intakeL').value||0)+(+$('intakeD').value||0); }
 
 /* ===== 今日记录 ===== */
 function calcRec(){
@@ -280,9 +289,9 @@ function calcRec(){
   $('rAero').textContent=Math.round(c.aero);
   $('rStr').textContent=Math.round(c.str);
   $('epoc').textContent='EPOC 后燃参考 +'+Math.round(c.str*0.12)+' kcal · 不计入合计';
-  const intake=+$('intake').value||0, deficit=c.total-intake;
+  const intake=sumIntake(), deficit=c.total-intake;
   const dl=$('deficitLine');
-  dl.textContent=intake>0?`今日缺口 ${deficit>=0?'+':''}${Math.round(deficit)} kcal（消耗 ${c.total} − 摄入 ${intake}）`:'录入摄入热量后可显示今日缺口';
+  dl.textContent=intake>0?`今日缺口 ${deficit>=0?'+':''}${Math.round(deficit)} kcal（消耗 ${c.total} − 三餐 ${intake}）`:'录入早餐/午餐/晚餐热量后可显示今日缺口';
   dl.style.color=intake>0?(deficit>=0?'var(--good)':'var(--warn)'):'';
   const warn=[];
   if(aeroHR>160)warn.push('心率 160+ 超出公式验证区间（90–150），建议用全程平均值');
@@ -291,14 +300,14 @@ function calcRec(){
   return c;
 }
 $('saveBtn').onclick=()=>{
-  const rec={date:todayStr(),weight:+$('weight').value||85,bf:+$('bf').value||25,intake:+$('intake').value||0,steps:+$('steps').value||0,aeroMin:+$('aeroMin').value||0,aeroHR:+$('aeroHR').value||150,strMin:+$('strMin').value||0,strInt:+$('strInt').value||1};
+  const rec={date:todayStr(),weight:+$('weight').value||85,bf:+$('bf').value||25,intakeB:+$('intakeB').value||0,intakeL:+$('intakeL').value||0,intakeD:+$('intakeD').value||0,intake:sumIntake(),steps:+$('steps').value||0,aeroMin:+$('aeroMin').value||0,aeroHR:+$('aeroHR').value||150,strMin:+$('strMin').value||0,strInt:+$('strInt').value||1};
   Object.assign(rec,computeCalories(rec));
   const rows=loadLedger(); const i=rows.findIndex(x=>x.date===rec.date);
   if(i>=0)rows[i]=rec;else rows.push(rec);
   storeLedger(rows);
   toast('已保存 '+todayStr(),true);
 };
-['weight','bf','intake','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calcRec));
+['weight','bf','intakeB','intakeL','intakeD','steps','aeroMin','aeroHR','strMin','strInt','sex','age','height'].forEach(id=>$(id).addEventListener('input',calcRec));
 
 /* ===== 体重台账 ===== */
 function renderWeight(){
@@ -423,7 +432,8 @@ function renderDeficitChart(){
     const wt=rec&&+rec.weight>0?(+rec.weight).toFixed(1):'–';
     x2.setAttribute('x1',X(d)); x2.setAttribute('x2',X(d)); x2.setAttribute('y1',topTop); x2.setAttribute('y2',H-pb); x2.style.display='';
     tip.style.display='block';
-    tip.innerHTML=`<b>${d}</b>　摄入 ${intake} · 消耗 ${tot}<br>缺口 ${def} kcal · 体重 ${wt} kg`;
+    const parts=rec&&(+rec.intakeB||+rec.intakeL||+rec.intakeD)?`（早 ${Math.round(rec.intakeB)||0} · 午 ${Math.round(rec.intakeL)||0} · 晚 ${Math.round(rec.intakeD)||0}）`:'';
+    tip.innerHTML=`<b>${d}</b>　摄入 ${intake} ${parts}<br>缺口 ${def} kcal · 体重 ${wt} kg`;
     const rect=wrap.getBoundingClientRect(), sx=(cx-rect.left)/rect.width*W;
     tip.style.left=Math.min(Math.max(sx-80,0),rect.width-170)+'px';
     tip.style.top='14px';
@@ -486,9 +496,9 @@ $('goalSave').onclick=()=>{ storeGoals({goalW:+$('goalW').value,goalD:$('goalD')
 $('exportBtn').onclick=()=>{
   const s=series();
   if(!s.length){ toast('暂无数据可导出'); return; }
-  const head='日期,体重kg,较上次,BMI,总消耗kcal,摄入kcal,缺口kcal,步行,有氧,力量';
+  const head='日期,体重kg,较上次,BMI,总消耗kcal,早餐kcal,午餐kcal,晚餐kcal,摄入kcal,缺口kcal,步行,有氧,力量';
   const body=s.map((r,i)=>{ const prev=i>0?s[i-1]:null, d=prev?(+r.weight-+prev.weight).toFixed(1):'';
-    return [r.date,(+r.weight).toFixed(1),d,(+r.weight/((HEIGHT/100)**2)).toFixed(1),Math.round(r.total),r.intake?Math.round(r.intake):'',r.intake?Math.round(r.total-r.intake):'',Math.round(r.walk),Math.round(r.aero),Math.round(r.str)].join(','); }).join('\n');
+    return [r.date,(+r.weight).toFixed(1),d,(+r.weight/((HEIGHT/100)**2)).toFixed(1),Math.round(r.total),r.intakeB?Math.round(r.intakeB):'',r.intakeL?Math.round(r.intakeL):'',r.intakeD?Math.round(r.intakeD):'',r.intake?Math.round(r.intake):'',r.intake?Math.round(r.total-r.intake):'',Math.round(r.walk),Math.round(r.aero),Math.round(r.str)].join(','); }).join('\n');
   const blob=new Blob(['﻿'+head+'\n'+body],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='热量与体重台账.csv'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
